@@ -68,9 +68,9 @@ Less4j is a port. The original compiler was written in JavaScript and is called 
 		</dependency>
 		<!-- There are needed for source map, should be moved to separate project -->
 		<dependency>
-			<groupId>org.json</groupId>
-			<artifactId>json</artifactId>
-			<version>20090211</version>
+			<groupId>com.googlecode.json-simple</groupId>
+			<artifactId>json-simple</artifactId>
+			<version>1.1.1</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.protobuf</groupId>

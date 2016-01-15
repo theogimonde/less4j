@@ -3,30 +3,29 @@ package com.github.sommeri.less4j.utils;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
 public class JSONUtils {
 
-  public static String getString(JSONObject object, String propertyName) throws JSONException {
-    if (object.has(propertyName))
-      return object.getString(propertyName);
+  public static String getString(JSONObject object, String propertyName) {
+    if (object.containsKey(propertyName))
+      return (String) object.get(propertyName);
 
     return null;
   }
 
-  public static List<String> getStringList(JSONObject object, String propertyName) throws JSONException {
-    if (object.has(propertyName))
-      return toStringList(object.getJSONArray(propertyName));
+  public static List<String> getStringList(JSONObject object, String propertyName) {
+    if (object.containsKey(propertyName))
+      return toStringList((JSONArray) object.get(propertyName));
 
     return null;
   }
 
-  public static List<String> toStringList(JSONArray jsonArray) throws JSONException {
+  public static List<String> toStringList(JSONArray jsonArray) {
     List<String> result = new ArrayList<String>();
-    for (int i = 0; i < jsonArray.length(); i++) {
-      result.add(jsonArray.isNull(i) ? null : jsonArray.getString(i));
+    for (int i = 0; i < jsonArray.size(); i++) {
+      result.add((String) jsonArray.get(i));
     }
     return result;
   }

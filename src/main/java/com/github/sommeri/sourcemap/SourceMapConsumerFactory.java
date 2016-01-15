@@ -16,8 +16,9 @@
 
 package com.github.sommeri.sourcemap;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import org.json.simple.parser.ParseException;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
 
 /**
  * Detect and parse the provided source map.
@@ -59,9 +60,9 @@ public class SourceMapConsumerFactory {
     if (contents.startsWith("{")) {
       try {
         // Revision 2 and 3, are JSON Objects
-        JSONObject sourceMapRoot = new JSONObject(contents);
+        JSONObject sourceMapRoot = (JSONObject) JSONValue.parseWithException(contents);
         // Check basic assertions about the format.
-        int version = sourceMapRoot.getInt("version");
+        int version = ((Number) sourceMapRoot.get("version")).intValue();
         switch (version) {
         case 3: {
           SourceMapConsumerV3 consumer = new SourceMapConsumerV3();
@@ -71,7 +72,7 @@ public class SourceMapConsumerFactory {
         default:
           throw new SourceMapParseException("Unknown source map version:" + version);
         }
-      } catch (JSONException ex) {
+      } catch (ParseException ex) {
         throw new SourceMapParseException("JSON parse exception: " + ex);
       }
     }
