@@ -24,9 +24,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.io.StringReader;
+import javax.json.Json;
+import javax.json.JsonArray;
+import javax.json.JsonException;
+import javax.json.JsonObject;
 
 import com.github.sommeri.sourcemap.Base64VLQ.CharIterator;
 import com.github.sommeri.sourcemap.Mapping.OriginalMapping;
@@ -79,9 +81,9 @@ public class SourceMapConsumerV3 implements SourceMapConsumer, SourceMappingReve
    */
   public void parse(String contents, SourceMapSupplier sectionSupplier) throws SourceMapParseException {
     try {
-      JSONObject sourceMapRoot = new JSONObject(contents);
+      JsonObject sourceMapRoot = Json.createReader(new StringReader(contents)).readObject();
       parse(sourceMapRoot, sectionSupplier);
-    } catch (JSONException ex) {
+    } catch (JsonException ex) {
       throw new SourceMapParseException("JSON parse exception: " + ex);
     }
   }
@@ -89,59 +91,55 @@ public class SourceMapConsumerV3 implements SourceMapConsumer, SourceMappingReve
   /**
    * Parses the given contents containing a source map.
    */
-  public void parse(JSONObject sourceMapRoot) throws SourceMapParseException {
+  public void parse(JsonObject sourceMapRoot) throws SourceMapParseException {
     parse(sourceMapRoot, null);
   }
 
   /**
    * Parses the given contents containing a source map.
    */
-  public void parse(JSONObject sourceMapRoot, SourceMapSupplier sectionSupplier) throws SourceMapParseException {
-    try {
-      // Check basic assertions about the format.
-      int version = sourceMapRoot.getInt("version");
-      if (version != 3) {
-        throw new SourceMapParseException("Unknown version: " + version);
-      }
-
-      this.file = sourceMapRoot.getString("file");
-      if (file.isEmpty()) {
-        //SMS: (source map separation):  commented this - I need more tolerant parser
-        //throw new SourceMapParseException("File entry is missing or empty ");
-      }
-      if (sourceMapRoot.has("sourceRoot"))
-        this.sourceRoot = sourceMapRoot.getString("sourceRoot");
-      
-      if (sourceMapRoot.has("sections")) {
-        // Looks like a index map, try to parse it that way.
-        parseMetaMap(sourceMapRoot, sectionSupplier);
-        return;
-      }
-
-      lineCount = sourceMapRoot.getInt("lineCount");
-      String lineMap = sourceMapRoot.getString("mappings");
-
-      sources = getJavaStringArray(sourceMapRoot.getJSONArray("sources"));
-      if (sourceMapRoot.has("sourcesContent")) {
-        sourcesContent = getJavaStringArray(sourceMapRoot.getJSONArray("sourcesContent"));
-      } else {
-        sourcesContent= new String[sources.length];
-      }
-      names = getJavaStringArray(sourceMapRoot.getJSONArray("names"));
-
-      lines = new ArrayList<ArrayList<Entry>>(lineCount);
-
-      new MappingBuilder(lineMap).build();
-    } catch (JSONException ex) {
-      throw new SourceMapParseException("JSON parse exception: " + ex);
+  public void parse(JsonObject sourceMapRoot, SourceMapSupplier sectionSupplier) throws SourceMapParseException {
+    // Check basic assertions about the format.
+    int version = sourceMapRoot.getInt("version");
+    if (version != 3) {
+      throw new SourceMapParseException("Unknown version: " + version);
     }
+
+    this.file = sourceMapRoot.getString("file");
+    if (file.isEmpty()) {
+      //SMS: (source map separation):  commented this - I need more tolerant parser
+      //throw new SourceMapParseException("File entry is missing or empty ");
+    }
+    if (sourceMapRoot.containsKey("sourceRoot"))
+      this.sourceRoot = sourceMapRoot.getString("sourceRoot");
+    
+    if (sourceMapRoot.containsKey("sections")) {
+      // Looks like a index map, try to parse it that way.
+      parseMetaMap(sourceMapRoot, sectionSupplier);
+      return;
+    }
+
+    lineCount = sourceMapRoot.getInt("lineCount");
+    String lineMap = sourceMapRoot.getString("mappings");
+
+    sources = getJavaStringArray(sourceMapRoot.getJsonArray("sources"));
+    if (sourceMapRoot.containsKey("sourcesContent")) {
+      sourcesContent = getJavaStringArray(sourceMapRoot.getJsonArray("sourcesContent"));
+    } else {
+      sourcesContent= new String[sources.length];
+    }
+    names = getJavaStringArray(sourceMapRoot.getJsonArray("names"));
+
+    lines = new ArrayList<ArrayList<Entry>>(lineCount);
+
+    new MappingBuilder(lineMap).build();
   }
 
   /**
    * @param sourceMapRoot
    * @throws SourceMapParseException
    */
-  private void parseMetaMap(JSONObject sourceMapRoot, SourceMapSupplier sectionSupplier) throws SourceMapParseException {
+  private void parseMetaMap(JsonObject sourceMapRoot, SourceMapSupplier sectionSupplier) throws SourceMapParseException {
     if (sectionSupplier == null) {
       sectionSupplier = new DefaultSourceMapSupplier();
     }
@@ -158,28 +156,28 @@ public class SourceMapConsumerV3 implements SourceMapConsumer, SourceMappingReve
         throw new SourceMapParseException("File entry is missing or empty");
       }
 
-      if (sourceMapRoot.has("lineCount") || sourceMapRoot.has("mappings") || sourceMapRoot.has("sources") || sourceMapRoot.has("names")) {
+      if (sourceMapRoot.containsKey("lineCount") || sourceMapRoot.containsKey("mappings") || sourceMapRoot.containsKey("sources") || sourceMapRoot.containsKey("names")) {
         throw new SourceMapParseException("Invalid map format");
       }
 
       SourceMapGeneratorV3 generator = new SourceMapGeneratorV3();
-      JSONArray sections = sourceMapRoot.getJSONArray("sections");
-      for (int i = 0, count = sections.length(); i < count; i++) {
-        JSONObject section = sections.getJSONObject(i);
-        if (section.has("map") && section.has("url")) {
+      JsonArray sections = sourceMapRoot.getJsonArray("sections");
+      for (int i = 0, count = sections.size(); i < count; i++) {
+        JsonObject section = sections.getJsonObject(i);
+        if (section.containsKey("map") && section.containsKey("url")) {
           throw new SourceMapParseException("Invalid map format: section may not have both 'map' and 'url'");
         }
-        JSONObject offset = section.getJSONObject("offset");
+        JsonObject offset = section.getJsonObject("offset");
         int line = offset.getInt("line");
         int column = offset.getInt("column");
         String mapSectionContents;
-        if (section.has("url")) {
+        if (section.containsKey("url")) {
           String url = section.getString("url");
           mapSectionContents = sectionSupplier.getSourceMap(url);
           if (mapSectionContents == null) {
             throw new SourceMapParseException("Unable to retrieve: " + url);
           }
-        } else if (section.has("map")) {
+        } else if (section.containsKey("map")) {
           mapSectionContents = section.getString("map");
         } else {
           throw new SourceMapParseException("Invalid map format: section must have either 'map' or 'url'");
@@ -198,8 +196,6 @@ public class SourceMapConsumerV3 implements SourceMapConsumer, SourceMappingReve
       parse(sb.toString());
     } catch (IOException ex) {
       throw new SourceMapParseException("IO exception: " + ex);
-    } catch (JSONException ex) {
-      throw new SourceMapParseException("JSON parse exception: " + ex);
     }
   }
 
@@ -275,8 +271,8 @@ public class SourceMapConsumerV3 implements SourceMapConsumer, SourceMappingReve
     }
   }
 
-  private String[] getJavaStringArray(JSONArray array) throws JSONException {
-    int len = array.length();
+  private String[] getJavaStringArray(JsonArray array) {
+    int len = array.size();
     String[] result = new String[len];
     for (int i = 0; i < len; i++) {
       result[i] = array.isNull(i)? null : array.getString(i);
